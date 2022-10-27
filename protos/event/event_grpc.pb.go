@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type EventPushClient interface {
 	Join(ctx context.Context, in *JoinReq, opts ...grpc.CallOption) (EventPush_JoinClient, error)
 	SendMsg(ctx context.Context, in *SendReq, opts ...grpc.CallOption) (*SendReqRes, error)
+	BoardCast(ctx context.Context, in *BoardCastReq, opts ...grpc.CallOption) (*SendReqRes, error)
 }
 
 type eventPushClient struct {
@@ -75,12 +76,22 @@ func (c *eventPushClient) SendMsg(ctx context.Context, in *SendReq, opts ...grpc
 	return out, nil
 }
 
+func (c *eventPushClient) BoardCast(ctx context.Context, in *BoardCastReq, opts ...grpc.CallOption) (*SendReqRes, error) {
+	out := new(SendReqRes)
+	err := c.cc.Invoke(ctx, "/eventpush.EventPush/BoardCast", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EventPushServer is the server API for EventPush service.
 // All implementations must embed UnimplementedEventPushServer
 // for forward compatibility
 type EventPushServer interface {
 	Join(*JoinReq, EventPush_JoinServer) error
 	SendMsg(context.Context, *SendReq) (*SendReqRes, error)
+	BoardCast(context.Context, *BoardCastReq) (*SendReqRes, error)
 	mustEmbedUnimplementedEventPushServer()
 }
 
@@ -93,6 +104,9 @@ func (UnimplementedEventPushServer) Join(*JoinReq, EventPush_JoinServer) error {
 }
 func (UnimplementedEventPushServer) SendMsg(context.Context, *SendReq) (*SendReqRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMsg not implemented")
+}
+func (UnimplementedEventPushServer) BoardCast(context.Context, *BoardCastReq) (*SendReqRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BoardCast not implemented")
 }
 func (UnimplementedEventPushServer) mustEmbedUnimplementedEventPushServer() {}
 
@@ -146,6 +160,24 @@ func _EventPush_SendMsg_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EventPush_BoardCast_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BoardCastReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EventPushServer).BoardCast(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/eventpush.EventPush/BoardCast",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EventPushServer).BoardCast(ctx, req.(*BoardCastReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EventPush_ServiceDesc is the grpc.ServiceDesc for EventPush service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +188,10 @@ var EventPush_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendMsg",
 			Handler:    _EventPush_SendMsg_Handler,
+		},
+		{
+			MethodName: "BoardCast",
+			Handler:    _EventPush_BoardCast_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

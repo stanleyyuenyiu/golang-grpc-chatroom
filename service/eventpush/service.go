@@ -16,11 +16,15 @@ type EventPushService struct {
 }
 
 func (s *EventPushService) Join(req *pb.JoinReq, stream pb.EventPush_JoinServer) error {
+	tmp := make(chan struct{})
+	defer close(tmp)
+
 	user := req.GetUser()
 	ch := string(req.GetChannel())
 	log.Printf("[Join] id: %v, name %v join channel %v", user.Id, user.Name, ch)
 
 	msgCh := make(chan pb.EventStream)
+
 	s.channel[ch] = append(s.channel[ch], msgCh)
 	s.users[user.Id] = user
 
@@ -34,7 +38,7 @@ func (s *EventPushService) Join(req *pb.JoinReq, stream pb.EventPush_JoinServer)
 			return err
 		}
 	}
-
+	<-tmp
 	return nil
 }
 
@@ -61,6 +65,37 @@ func (s *EventPushService) SendMsg(ctx context.Context, req *pb.SendReq) (*pb.Se
 		for _, msgChan := range streams {
 			msgChan <- m
 		}
+	}()
+
+	return &pb.SendReqRes{Response: true}, nil
+}
+
+func (s *EventPushService) BoardCast(ctx context.Context, req *pb.BoardCastReq) (*pb.SendReqRes, error) {
+	msg := string(req.GetMessage())
+	ch := string(req.GetChannel())
+
+	m := pb.EventStream{
+		Message: msg,
+		From: &pb.User{
+			Id:   0,
+			Name: "Admin",
+		},
+	}
+	log.Printf("[BoardCast] admin boardcast message via channel %v: %v", ch, msg)
+	go func() {
+		if ch == "" {
+			for channel := range s.channel {
+				for _, msgChan := range s.channel[channel] {
+					msgChan <- m
+				}
+			}
+		} else {
+			streams := s.channel[ch]
+			for _, msgChan := range streams {
+				msgChan <- m
+			}
+		}
+
 	}()
 
 	return &pb.SendReqRes{Response: true}, nil
