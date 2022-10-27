@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option go_package = "protos/eventpush";
+
+package eventpush;
+
+service EventPush {
+  rpc Join (JoinReq) returns (stream EventStream) {}
+  rpc SendMsg (SendReq) returns (SendReqRes) {}
+}
+
+message  User {
+  string name = 1;
+  int32 id = 2;
+}
+message JoinReq {
+  User user = 1;
+  string channel = 3;
+}
+
+message SendReq {
+  string message = 1;
+  int32 to = 2;
+  string channel = 3;
+}
+
+message EventStream {
+  string message = 1;
+  User from = 2;
+}
+
+message  SendReqRes {
+  bool response = 1;
+}
+
+//protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ./protos/event/event.proto
